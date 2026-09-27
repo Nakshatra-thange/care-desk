@@ -14,8 +14,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "django.contrib.postgres",  # range fields + exclusion constraints
-    "core",
+    "rest_framework",
+    "core",  # range fields + exclusion constraints
+    
 ]
 
 MIDDLEWARE = [
