@@ -6,11 +6,36 @@ from django.db.models import Q
 
 class Therapist(models.Model):
     name = models.CharField(max_length=120)
-    timezone = models.CharField(max_length=64, default="Asia/Kolkata")  # used on Day 2
+    timezone = models.CharField(max_length=64, default="Asia/Kolkata")  # IANA name, e.g. "Europe/London"
     session_minutes = models.PositiveSmallIntegerField(default=50)
 
     def __str__(self):
         return self.name
+
+
+class AvailabilityRule(models.Model):
+    """A weekly window in the THERAPIST's local time, e.g. "Tuesdays 18:00-21:00".
+
+    Stored as local wall-clock time, not UTC, because the UTC time of
+    "18:00 in London" changes when the clocks change.
+    """
+
+    class Weekday(models.IntegerChoices):
+        MONDAY = 0
+        TUESDAY = 1
+        WEDNESDAY = 2
+        THURSDAY = 3
+        FRIDAY = 4
+        SATURDAY = 5
+        SUNDAY = 6
+
+    therapist = models.ForeignKey(Therapist, on_delete=models.CASCADE, related_name="availability_rules")
+    weekday = models.PositiveSmallIntegerField(choices=Weekday.choices)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    def __str__(self):
+        return f"{self.therapist} {self.get_weekday_display()} {self.start_time:%H:%M}-{self.end_time:%H:%M}"
 
 
 class Client(models.Model):
@@ -34,6 +59,8 @@ class Booking(models.Model):
     # so a 10:00-11:00 booking and an 11:00-12:00 booking do NOT overlap.
     during = DateTimeRangeField()
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.CONFIRMED)
+    # Only set while status is "held": when the client's 10 minutes to pay run out.
+    hold_expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

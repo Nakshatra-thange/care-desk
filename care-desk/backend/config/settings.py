@@ -15,13 +15,17 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
-    "django.contrib.postgres",  # range fields + exclusion constraints
+
     "rest_framework",
+    "corsheaders",
     "core",  # range fields + exclusion constraints
     
 ]
 
+
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  
+    "django.middleware.security.SecurityMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -63,3 +67,6 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
