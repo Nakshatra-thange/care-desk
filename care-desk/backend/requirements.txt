@@ -2,3 +2,5 @@ Django~=5.2.0
 djangorestframework~=3.16
 psycopg[binary]~=3.2
 django-cors-headers~=4.7
+requests~=2.32
+python-dotenv~=1.0

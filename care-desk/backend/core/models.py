@@ -79,3 +79,40 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.client} with {self.therapist} ({self.status})"
+
+
+
+class Payment(models.Model):
+    """One Razorpay order for one booking."""
+
+    class Status(models.TextChoices):
+        CREATED = "created"            # order made, client hasn't paid yet
+        PAID = "paid"                  # money received and booking confirmed
+        NEEDS_REFUND = "needs_refund"  # money received, but the slot was lost
+
+    booking = models.ForeignKey(Booking, on_delete=models.PROTECT, related_name="payments")
+    razorpay_order_id = models.CharField(max_length=64, unique=True)
+    razorpay_payment_id = models.CharField(max_length=64, blank=True)
+    amount_paise = models.PositiveIntegerField()  # money as whole paise, never floats
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.CREATED)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.razorpay_order_id} ({self.status})"
+
+
+class WebhookEvent(models.Model):
+    """Every webhook Razorpay sends us, keyed by Razorpay's event id.
+
+    IDEA 4: event_id is UNIQUE, so the same event can only ever be stored,
+    and therefore processed, once. Razorpay retries deliveries, so duplicates
+    are normal, not an edge case.
+    """
+
+    event_id = models.CharField(max_length=64, unique=True)
+    event_type = models.CharField(max_length=64)
+    payload = models.JSONField()
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.event_type} {self.event_id}"

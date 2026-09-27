@@ -1,13 +1,20 @@
 """API endpoints. @api_view is Django REST Framework's version of FastAPI's @app.get."""
+import json
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo, available_timezones
 
+from django.conf import settings
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .booking import SlotTaken, confirm_booking, hold_slot
+from .booking import SlotTaken, hold_slot
 from .models import Booking, Client, Therapist
+from .payments import SESSION_PRICE_PAISE, handle_webhook_event, signature_is_valid, start_payment
 from .scheduling import UTC, get_open_slots
 
 MAX_DAYS = 31
@@ -77,6 +84,7 @@ def booking_json(b: Booking) -> dict:
         "start": iso(b.during.lower),
         "end": iso(b.during.upper),
         "hold_expires_at": iso(b.hold_expires_at),
+        "price_paise": SESSION_PRICE_PAISE,
         "therapist": b.therapist.name,
         "client": b.client.name,
     }
@@ -107,12 +115,43 @@ def booking_hold(request):
     return Response(booking_json(booking), status=201)
 
 
+@api_view(["GET"])
+def booking_detail(request, pk):
+    """The page polls this after paying, until the webhook has confirmed the booking."""
+    return Response(booking_json(get_object_or_404(Booking, pk=pk)))
+
+
 @api_view(["POST"])
-def booking_confirm(request, pk):
-    """TEMPORARY: pretends payment succeeded. Day 4 replaces this with the Razorpay webhook."""
-    get_object_or_404(Booking, pk=pk)
-    try:
-        booking = confirm_booking(pk)
-    except SlotTaken as e:
-        return Response({"detail": str(e)}, status=409)
-    return Response(booking_json(booking))
+def booking_pay(request, pk):
+    """Create (or reuse) a Razorpay order for a held booking.
+
+    Returns what the browser needs to open Razorpay Checkout. This does NOT
+    confirm anything: only the webhook below can do that.
+    """
+    booking = get_object_or_404(Booking, pk=pk)
+    if booking.status != Booking.Status.HELD or booking.hold_expires_at <= timezone.now():
+        return Response({"detail": "Your hold has run out. Please pick a time again."}, status=409)
+
+    payment = start_payment(booking)
+    return Response({
+        "key_id": settings.RAZORPAY_KEY_ID,
+        "order_id": payment.razorpay_order_id,
+        "amount": payment.amount_paise,
+        "currency": "INR",
+    })
+
+
+@csrf_exempt  # Razorpay can't send a CSRF token; the signature check replaces it.
+@require_POST
+def razorpay_webhook(request):
+    """Razorpay calls this when a payment succeeds. May be called many times per event."""
+    # Verify against the RAW bytes: re-encoding parsed JSON could change them.
+    if not signature_is_valid(request.body, request.headers.get("X-Razorpay-Signature", "")):
+        return JsonResponse({"detail": "Invalid signature"}, status=400)
+    event_id = request.headers.get("X-Razorpay-Event-Id")
+    if not event_id:
+        return JsonResponse({"detail": "Missing X-Razorpay-Event-Id"}, status=400)
+
+    result = handle_webhook_event(event_id, json.loads(request.body))
+    # Always 200 for a genuine event, even a duplicate, so Razorpay stops retrying.
+    return JsonResponse({"result": result})

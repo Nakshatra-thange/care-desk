@@ -7,5 +7,7 @@ urlpatterns = [
     path("therapists/<int:pk>/slots/", views.therapist_slots),
     path("clients/", views.client_list),
     path("bookings/hold/", views.booking_hold),
-    path("bookings/<int:pk>/confirm/", views.booking_confirm),
+    path("bookings/<int:pk>/", views.booking_detail),
+    path("bookings/<int:pk>/pay/", views.booking_pay),
+    path("webhooks/razorpay/", views.razorpay_webhook),
 ]

@@ -138,7 +138,7 @@ class HoldApiTests(TestCase):
             content_type="application/json",
         )
 
-    def test_hold_then_second_client_gets_409_then_confirm(self, _now):
+    def test_hold_then_second_client_gets_409(self, _now):
         res = self.post_hold(self.priya)
         self.assertEqual(res.status_code, 201, res.json())
         self.assertEqual(res.json()["hold_expires_at"], "2026-10-01T09:10:00Z")
@@ -147,8 +147,7 @@ class HoldApiTests(TestCase):
         self.assertEqual(res2.status_code, 409)
         self.assertIn("just taken", res2.json()["detail"])
 
-        res3 = self.client.post(f"/api/bookings/{res.json()['id']}/confirm/")
-        self.assertEqual(res3.json()["status"], "confirmed")
+        
 
     def test_bad_start_is_rejected(self, _now):
         res = self.client.post(
