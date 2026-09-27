@@ -1,4 +1,4 @@
-
+// Small typed wrapper around the Django API.
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
@@ -12,12 +12,15 @@ export type Slot = {
   therapist_time: string; // "18:50", in the therapist's timezone
 };
 
+export type PaymentOrder = { key_id: string; order_id: string; amount: number; currency: string };
+
 export type Booking = {
   id: number;
   status: "held" | "confirmed" | "cancelled" | "expired";
   start: string;
   end: string;
   hold_expires_at: string | null;
+  price_paise: number;
   therapist: string;
   client: string;
 };
@@ -44,5 +47,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ client_id: clientId, therapist_id: therapistId, start }),
     }),
-  confirm: (bookingId: number) => call<Booking>(`/bookings/${bookingId}/confirm/`, { method: "POST" }),
+  booking: (bookingId: number) => call<Booking>(`/bookings/${bookingId}/`),
+  pay: (bookingId: number) => call<PaymentOrder>(`/bookings/${bookingId}/pay/`, { method: "POST" }),
 };

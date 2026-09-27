@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { api, type Booking, type Person, type Slot } from "@/lib/api";
+import { openCheckout } from "@/lib/razorpay";
 
 const DAYS_AHEAD = 14;
 
@@ -35,6 +36,11 @@ function when(iso: string, tz: string) {
 
 const city = (tz: string) => tz.split("/").pop()!.replaceAll("_", " ");
 
+const rupees = (paise: number) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 // ---------- the page ----------
 
 export default function BookingPage() {
@@ -50,6 +56,7 @@ export default function BookingPage() {
   const [confirmed, setConfirmed] = useState<Booking | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [waitingForWebhook, setWaitingForWebhook] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   // Until the user picks, default to the first client and therapist.
@@ -96,19 +103,36 @@ export default function BookingPage() {
   async function pay() {
     if (!hold) return;
     setBusy(true);
+    setNotice(null);
     try {
-      setConfirmed(await api.confirm(hold.id));
-      setHold(null);
+      const order = await api.pay(hold.id);
+      const result = await openCheckout(order, `Session with ${hold.therapist}`);
+      if (result === "closed") {
+        setNotice("Payment window closed. Your slot stays held until the timer runs out.");
+        return;
+      }
+      // The browser says it worked, but only the webhook confirms. Poll until it has.
+      setWaitingForWebhook(true);
+      for (let i = 0; i < 30; i++) {
+        const latest = await api.booking(hold.id);
+        if (latest.status === "confirmed") {
+          setConfirmed(latest);
+          setHold(null);
+          return;
+        }
+        await sleep(2000);
+      }
+      setNotice("Payment received. Still waiting for Razorpay's confirmation; check back in a minute.");
     } catch (e) {
       setNotice((e as Error).message);
-      setHold(null);
-      reloadSlots();
     } finally {
       setBusy(false);
+      setWaitingForWebhook(false);
     }
   }
 
   function holdRanOut() {
+    if (waitingForWebhook) return; // paid already: a late payment is still confirmed if the slot is free
     setHold(null);
     setNotice("Your 10 minutes ran out, so the slot was released. Please pick a time again.");
     reloadSlots();
@@ -163,7 +187,7 @@ export default function BookingPage() {
       )}
 
       {hold ? (
-        <HoldPanel hold={hold} tz={tz} busy={busy} onPay={pay} onRanOut={holdRanOut} />
+        <HoldPanel hold={hold} tz={tz} busy={busy} waiting={waitingForWebhook} onPay={pay} onRanOut={holdRanOut} />
       ) : (
         <>
           {/* Day picker */}
@@ -208,10 +232,11 @@ export default function BookingPage() {
 
 // ---------- the 10-minute hold ----------
 
-function HoldPanel({ hold, tz, busy, onPay, onRanOut }: {
+function HoldPanel({ hold, tz, busy, waiting, onPay, onRanOut }: {
   hold: Booking;
   tz: string;
   busy: boolean;
+  waiting: boolean;
   onPay: () => void;
   onRanOut: () => void;
 }) {
@@ -246,7 +271,7 @@ function HoldPanel({ hold, tz, busy, onPay, onRanOut }: {
         disabled={busy}
         className="mt-5 rounded bg-teal-700 px-5 py-2.5 font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
       >
-        Pay (test mode)
+        {waiting ? "Confirming payment…" : `Pay ${rupees(hold.price_paise)}`}
       </button>
     </section>
   );
