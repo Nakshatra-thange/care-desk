@@ -48,5 +48,6 @@ export const api = {
       body: JSON.stringify({ client_id: clientId, therapist_id: therapistId, start }),
     }),
   booking: (bookingId: number) => call<Booking>(`/bookings/${bookingId}/`),
+  release: (bookingId: number) => call<Booking>(`/bookings/${bookingId}/release/`, { method: "POST" }),
   pay: (bookingId: number) => call<PaymentOrder>(`/bookings/${bookingId}/pay/`, { method: "POST" }),
 };

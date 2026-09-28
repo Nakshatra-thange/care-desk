@@ -131,6 +131,21 @@ export default function BookingPage() {
     }
   }
 
+  async function changeTime() {
+    if (!hold) return;
+    setBusy(true);
+    try {
+      await api.release(hold.id); // frees the slot now, for everyone
+    } catch {
+      // Already expired or released: either way the slot is no longer ours.
+    } finally {
+      setHold(null);
+      setNotice(null);
+      setBusy(false);
+      reloadSlots();
+    }
+  }
+
   function holdRanOut() {
     if (waitingForWebhook) return; // paid already: a late payment is still confirmed if the slot is free
     setHold(null);
@@ -187,7 +202,7 @@ export default function BookingPage() {
       )}
 
       {hold ? (
-        <HoldPanel hold={hold} tz={tz} busy={busy} waiting={waitingForWebhook} onPay={pay} onRanOut={holdRanOut} />
+          <HoldPanel hold={hold} tz={tz} busy={busy} waiting={waitingForWebhook} onPay={pay} onChangeTime={changeTime} onRanOut={holdRanOut} />
       ) : (
         <>
           {/* Day picker */}
@@ -232,12 +247,13 @@ export default function BookingPage() {
 
 // ---------- the 10-minute hold ----------
 
-function HoldPanel({ hold, tz, busy, waiting, onPay, onRanOut }: {
+function HoldPanel({ hold, tz, busy, waiting, onPay, onChangeTime, onRanOut }: {
   hold: Booking;
   tz: string;
   busy: boolean;
   waiting: boolean;
   onPay: () => void;
+  onChangeTime: () => void;
   onRanOut: () => void;
 }) {
   const expiresAt = new Date(hold.hold_expires_at!).getTime();
@@ -266,13 +282,20 @@ function HoldPanel({ hold, tz, busy, waiting, onPay, onRanOut }: {
       <p className="mt-3 font-semibold">{hold.therapist}</p>
       <p>{when(hold.start, tz)}</p>
       <p className="mt-2 text-sm text-gray-600">Nobody else can book this slot while the timer runs.</p>
-      <button
-        onClick={onPay}
-        disabled={busy}
-        className="mt-5 rounded bg-teal-700 px-5 py-2.5 font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
-      >
-        {waiting ? "Confirming payment…" : `Pay ${rupees(hold.price_paise)}`}
-      </button>
+      <div className="mt-5 flex flex-wrap items-center gap-4">
+        <button
+          onClick={onPay}
+          disabled={busy}
+          className="rounded bg-teal-700 px-5 py-2.5 font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
+        >
+          {waiting ? "Confirming payment…" : `Pay ${rupees(hold.price_paise)}`}
+        </button>
+        {!waiting && (
+          <button onClick={onChangeTime} disabled={busy} className="text-sm text-gray-600 underline hover:text-gray-900 disabled:opacity-50">
+            Choose a different time
+          </button>
+        )}
+      </div>
     </section>
   );
 }
