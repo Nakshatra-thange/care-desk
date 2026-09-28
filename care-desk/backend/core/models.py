@@ -14,11 +14,7 @@ class Therapist(models.Model):
 
 
 class AvailabilityRule(models.Model):
-    """A weekly window in the THERAPIST's local time, e.g. "Tuesdays 18:00-21:00".
-
-    Stored as local wall-clock time, not UTC, because the UTC time of
-    "18:00 in London" changes when the clocks change.
-    """
+   
 
     class Weekday(models.IntegerChoices):
         MONDAY = 0
@@ -102,12 +98,7 @@ class Payment(models.Model):
 
 
 class WebhookEvent(models.Model):
-    """Every webhook Razorpay sends us, keyed by Razorpay's event id.
-
-    IDEA 4: event_id is UNIQUE, so the same event can only ever be stored,
-    and therefore processed, once. Razorpay retries deliveries, so duplicates
-    are normal, not an edge case.
-    """
+   
 
     event_id = models.CharField(max_length=64, unique=True)
     event_type = models.CharField(max_length=64)

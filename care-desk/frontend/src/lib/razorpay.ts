@@ -1,4 +1,4 @@
-// Opens Razorpay Checkout (their payment popup) for an order our server created.
+
 
 import type { PaymentOrder } from "./api";
 

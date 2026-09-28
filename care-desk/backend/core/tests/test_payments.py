@@ -1,4 +1,4 @@
-"""Idea 4: payments can't be processed twice.
+""" payments can't be processed twice.
 
 Razorpay's API is never called in tests: create_razorpay_order is replaced
 with a fake, and webhooks are signed with a test secret.

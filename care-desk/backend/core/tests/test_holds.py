@@ -1,6 +1,6 @@
-"""Idea 3: holds expire without any background job.
+""" holds expire without any background job.
 
-Asha works Tuesdays 18:00-21:00 India time, so on Tue 20 Oct 2026 her slots
+ for eg -- Asha works Tuesdays 18:00-21:00 India time, so on Tue 20 Oct 2026 her slots
 start at 12:30, 13:20 and 14:10 UTC. "Now" is 1 Oct unless a test says otherwise.
 """
 import threading

@@ -1,13 +1,4 @@
-"""Every function that writes a booking lives here.
 
-Idea 1 (Day 1): lock the therapist's row first, so bookings for one therapist
-take turns, and let the exclusion constraint be the final safety net.
-
-Idea 3 (Day 3): a hold lasts 10 minutes. Nothing runs in the background to
-expire it. Instead, every write first marks this therapist's out-of-time holds
-as "expired", inside the same locked transaction. So a stale hold can never
-block anyone, and correctness never depends on a job running on time.
-"""
 from datetime import datetime, timedelta
 
 from django.db import IntegrityError, transaction
@@ -42,11 +33,7 @@ def _insert(therapist: Therapist, client: Client, start: datetime, **fields) -> 
 
 
 def expire_stale_holds(therapist: Therapist, now: datetime) -> int:
-    """Mark this therapist's holds whose time is up as 'expired'. Returns how many.
-
-    This must run before inserting: the exclusion constraint only looks at the
-    status column, so a stale hold still marked 'held' would block the slot.
-    """
+   
     return Booking.objects.filter(
         therapist=therapist, status=Booking.Status.HELD, hold_expires_at__lte=now
     ).update(status=Booking.Status.EXPIRED)
@@ -54,14 +41,14 @@ def expire_stale_holds(therapist: Therapist, now: datetime) -> int:
 
 @transaction.atomic
 def create_booking(client: Client, therapist_id: int, start: datetime) -> Booking:
-    """Book a slot directly as confirmed, with no payment step (used on Day 1)."""
+   
     therapist = _lock_therapist(therapist_id)
     return _insert(therapist, client, start, status=Booking.Status.CONFIRMED)
 
 
 @transaction.atomic
 def hold_slot(client: Client, therapist_id: int, start: datetime, now: datetime | None = None) -> Booking:
-    """Reserve a slot for 10 minutes while the client pays."""
+
     now = now or timezone.now()
     therapist = _lock_therapist(therapist_id)
     expire_stale_holds(therapist, now)
@@ -80,12 +67,7 @@ def hold_slot(client: Client, therapist_id: int, start: datetime, now: datetime 
 
 @transaction.atomic
 def confirm_booking(booking_id: int, now: datetime | None = None) -> Booking:
-    """Turn a held booking into a confirmed one once payment arrives.
-
-    Safe to call twice: confirming a confirmed booking changes nothing.
-    If the payment arrives after the hold ran out, we still confirm when the
-    slot is free, and raise SlotTaken when someone else has taken it.
-    """
+   
     now = now or timezone.now()
     therapist_id = Booking.objects.values_list("therapist_id", flat=True).get(pk=booking_id)
     therapist = _lock_therapist(therapist_id)
@@ -110,11 +92,7 @@ def confirm_booking(booking_id: int, now: datetime | None = None) -> Booking:
 
 @transaction.atomic
 def release_hold(booking_id: int) -> Booking:
-    """The client changed their mind: free a held slot right away instead of in 10 minutes.
-
-    If a payment for it arrives later anyway, confirm_booking refuses a cancelled
-    booking, so the webhook marks that payment "needs_refund".
-    """
+    
     booking = Booking.objects.select_for_update().get(pk=booking_id)
     if booking.status != Booking.Status.HELD:
         raise SlotTaken(f"Only a held slot can be released. This booking is {booking.status}.")

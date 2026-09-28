@@ -1,6 +1,4 @@
-"""Idea 1: double-booking is impossible.
-
-Run with:  python manage.py test core
+""" double-booking is impossible.
 """
 import threading
 from datetime import datetime, timedelta, timezone
