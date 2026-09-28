@@ -1,0 +1,6 @@
+Care Desk is a booking and payment system for a therapy practice whose clients live in many countries. Building the screens was the easy part. I focused on the places real booking systems quietly break, and proved each one with automated tests (48 in total):
+
+No double-booking, even under concurrent requests. A Postgres exclusion constraint makes overlapping bookings impossible at the database level. My own concurrency test uncovered a deadlock between simultaneous inserts, which I fixed with row-level locking so bookings for one therapist are processed in turn.
+Correct times across timezones and daylight saving. Therapists set hours in their local time; slots are converted to UTC date by date, so a session never shifts when clocks change.
+Payment holds that expire without a background job. A slot is reserved for 10 minutes during payment. Stale holds are cleared inside the booking transaction itself, so correctness never depends on a scheduled job running on time.
+Payments that can't be processed twice. Bookings are confirmed only by signed Razorpay webhooks, never by the browser, and a unique event ID ensures repeated deliveries are handled exactly once
