@@ -1,4 +1,4 @@
-"""API endpoints. @api_view is Django REST Framework's version of FastAPI's @app.get."""
+
 import json
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo, available_timezones
@@ -31,11 +31,8 @@ def therapist_list(request):
 
 @api_view(["GET"])
 def therapist_slots(request, pk):
-    """GET /api/therapists/<pk>/slots/?start_date=2026-10-20&end_date=2026-10-27&tz=Europe/London
 
-    Dates are the CLIENT's calendar days in `tz`. Times come back in UTC
-    plus a ready-to-show local version.
-    """
+ 
     therapist = get_object_or_404(Therapist, pk=pk)
 
     tz_name = request.query_params.get("tz", "UTC")
@@ -92,13 +89,13 @@ def booking_json(b: Booking) -> dict:
 
 @api_view(["GET"])
 def client_list(request):
-    """Demo only: lets the page choose which fake client is booking."""
+
     return Response([{"id": c.id, "name": c.name} for c in Client.objects.order_by("name")])
 
 
 @api_view(["POST"])
 def booking_hold(request):
-    """POST /api/bookings/hold/  {"client_id": 1, "therapist_id": 1, "start": "2026-10-19T12:30:00Z"}"""
+
     client = get_object_or_404(Client, pk=request.data.get("client_id"))
     therapist = get_object_or_404(Therapist, pk=request.data.get("therapist_id"))
     try:
@@ -137,11 +134,7 @@ def booking_detail(request, pk):
 
 @api_view(["POST"])
 def booking_pay(request, pk):
-    """Create (or reuse) a Razorpay order for a held booking.
-
-    Returns what the browser needs to open Razorpay Checkout. This does NOT
-    confirm anything: only the webhook below can do that.
-    """
+ 
     booking = get_object_or_404(Booking, pk=pk)
     if booking.status != Booking.Status.HELD or booking.hold_expires_at <= timezone.now():
         return Response({"detail": "Your hold has run out. Please pick a time again."}, status=409)
@@ -158,7 +151,7 @@ def booking_pay(request, pk):
 @csrf_exempt  # Razorpay can't send a CSRF token; the signature check replaces it.
 @require_POST
 def razorpay_webhook(request):
-    """Razorpay calls this when a payment succeeds. May be called many times per event."""
+
     # Verify against the RAW bytes: re-encoding parsed JSON could change them.
     if not signature_is_valid(request.body, request.headers.get("X-Razorpay-Signature", "")):
         return JsonResponse({"detail": "Invalid signature"}, status=400)

@@ -1,15 +1,15 @@
-// Small typed wrapper around the Django API.
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
 export type Person = { id: number; name: string; timezone?: string };
 
 export type Slot = {
-  start: string; // UTC, e.g. "2026-10-20T13:20:00Z"
+  start: string; 
   end: string;
-  local_date: string; // "2026-10-20", in the viewer's timezone
-  local_time: string; // "14:20", in the viewer's timezone
-  therapist_time: string; // "18:50", in the therapist's timezone
+  local_date: string;
+  local_time: string; 
+  therapist_time: string; 
 };
 
 export type PaymentOrder = { key_id: string; order_id: string; amount: number; currency: string };

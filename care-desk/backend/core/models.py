@@ -44,25 +44,23 @@ class Client(models.Model):
 
 class Booking(models.Model):
     class Status(models.TextChoices):
-        HELD = "held"            # reserved while the client pays (Day 3)
-        CONFIRMED = "confirmed"  # paid, or a free booking
+        HELD = "held"     
+        CONFIRMED = "confirmed"  
         CANCELLED = "cancelled"
-        EXPIRED = "expired"      # a hold that ran out of time (Day 3)
+        EXPIRED = "expired"     
 
     therapist = models.ForeignKey(Therapist, on_delete=models.PROTECT, related_name="bookings")
     client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name="bookings")
-    # A Postgres tstzrange: [start, end). Start is included, end is not,
-    # so a 10:00-11:00 booking and an 11:00-12:00 booking do NOT overlap.
+    
     during = DateTimeRangeField()
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.CONFIRMED)
-    # Only set while status is "held": when the client's 10 minutes to pay run out.
+
     hold_expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
-            # IDEA 1: for the same therapist, no two active bookings may overlap.
-            # Postgres itself enforces this, even for requests arriving at the same instant.
+            
             ExclusionConstraint(
                 name="no_overlapping_bookings",
                 expressions=[
@@ -82,9 +80,9 @@ class Payment(models.Model):
     """One Razorpay order for one booking."""
 
     class Status(models.TextChoices):
-        CREATED = "created"            # order made, client hasn't paid yet
-        PAID = "paid"                  # money received and booking confirmed
-        NEEDS_REFUND = "needs_refund"  # money received, but the slot was lost
+        CREATED = "created"            
+        PAID = "paid"                 
+        NEEDS_REFUND = "needs_refund" 
 
     booking = models.ForeignKey(Booking, on_delete=models.PROTECT, related_name="payments")
     razorpay_order_id = models.CharField(max_length=64, unique=True)

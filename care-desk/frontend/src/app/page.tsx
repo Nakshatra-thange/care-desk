@@ -6,9 +6,9 @@ import { openCheckout } from "@/lib/razorpay";
 
 const DAYS_AHEAD = 14;
 
-// ---------- small helpers ----------
 
-// The viewer's timezone, e.g. "Europe/London". null while rendering on the server.
+
+
 function useTimezone() {
   return useSyncExternalStore(
     () => () => {},
@@ -17,7 +17,7 @@ function useTimezone() {
   );
 }
 
-// Today (plus some days) as YYYY-MM-DD in a timezone. The en-CA locale formats dates that way.
+
 function localDate(tz: string, addDays = 0) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(Date.now() + addDays * 86_400_000));
 }
@@ -41,7 +41,7 @@ const rupees = (paise: number) =>
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// ---------- the page ----------
+
 
 export default function BookingPage() {
   const tz = useTimezone();
