@@ -2,7 +2,7 @@
 import json
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo, available_timezones
-
+from django.db import transaction
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .booking import SlotTaken, hold_slot
+from .booking import SlotTaken, hold_slot , release_hold
 from .models import Booking, Client, Therapist
 from .payments import SESSION_PRICE_PAISE, handle_webhook_event, signature_is_valid, start_payment
 from .scheduling import UTC, get_open_slots
@@ -113,6 +113,20 @@ def booking_hold(request):
     except SlotTaken as e:
         return Response({"detail": str(e)}, status=409)
     return Response(booking_json(booking), status=201)
+
+@api_view(["POST"])
+def booking_release(request, pk):
+    """Release a held booking immediately."""
+    try:
+        booking = release_hold(pk)
+    except Booking.DoesNotExist:
+        return Response({"detail": "Booking not found."}, status=404)
+    except SlotTaken as e:
+        return Response({"detail": str(e)}, status=409)
+
+    return Response(booking_json(booking))
+
+
 
 
 @api_view(["GET"])

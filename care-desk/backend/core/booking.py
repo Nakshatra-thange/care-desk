@@ -105,3 +105,20 @@ def confirm_booking(booking_id: int, now: datetime | None = None) -> Booking:
     except IntegrityError:
         raise SlotTaken("Your hold ran out and someone else has booked this slot.")
     return booking
+
+
+
+@transaction.atomic
+def release_hold(booking_id: int) -> Booking:
+    """The client changed their mind: free a held slot right away instead of in 10 minutes.
+
+    If a payment for it arrives later anyway, confirm_booking refuses a cancelled
+    booking, so the webhook marks that payment "needs_refund".
+    """
+    booking = Booking.objects.select_for_update().get(pk=booking_id)
+    if booking.status != Booking.Status.HELD:
+        raise SlotTaken(f"Only a held slot can be released. This booking is {booking.status}.")
+    booking.status = Booking.Status.CANCELLED
+    booking.hold_expires_at = None
+    booking.save(update_fields=["status", "hold_expires_at"])
+    return booking
